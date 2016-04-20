@@ -1,6 +1,7 @@
 OBJ = cJSON.o
 LIBNAME = libcjson
 TESTS = test
+FUZZ = fuzz
 
 PREFIX ?= /usr/local
 INCLUDE_PATH ?= include/cjson
@@ -16,7 +17,7 @@ R_CFLAGS = -fpic $(CFLAGS) -Wall -Werror -Wstrict-prototypes -Wwrite-strings -D_
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo false')
 
 ## shared lib
-DYLIBNAME = $(LIBNAME).so 
+DYLIBNAME = $(LIBNAME).so
 DYLIBCMD = $(CC) -shared -o $(DYLIBNAME)
 
 ## create dynamic (shared) library on Darwin (base OS for MacOSX and IOS)
@@ -33,21 +34,24 @@ STLIBNAME = $(LIBNAME).a
 
 .PHONY: all clean install
 
-all: $(DYLIBNAME) $(STLIBNAME) $(TESTS)
+all: $(DYLIBNAME) $(STLIBNAME) $(TESTS) $(FUZZ)
 
 $(DYLIBNAME): $(OBJ)
 		$(DYLIBCMD) $< $(LDFLAGS)
-	
+
 $(STLIBNAME): $(OBJ)
 		ar rcs $@ $<
 
-$(OBJ): cJSON.c cJSON.h 
+$(OBJ): cJSON.c cJSON.h
 
 .c.o:
 		$(CC) -ansi -pedantic -c $(R_CFLAGS) $<
 
 $(TESTS): cJSON.c cJSON.h test.c
 		$(CC)  cJSON.c test.c -o test -lm -I.
+
+$(FUZZ): cJSON.c cJSON.h fuzz_driver.c
+		$(CC)  cJSON.c fuzz_driver.c -o fuzz_driver -lm -I.
 
 install: $(DYLIBNAME) $(STLIBNAME)
 		mkdir -p $(INSTALL_LIBRARY_PATH) $(INSTALL_INCLUDE_PATH)
@@ -60,5 +64,5 @@ uninstall:
 		rm -rf $(INSTALL_LIBRARY_PATH)/$(STLIBNAME)
 		rm -rf $(INSTALL_INCLUDE_PATH)/cJSON.h
 
-clean: 
+clean:
 		rm -rf $(DYLIBNAME) $(STLIBNAME) $(TESTS) *.o
